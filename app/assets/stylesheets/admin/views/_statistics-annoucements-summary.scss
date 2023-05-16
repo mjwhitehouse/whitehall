@@ -1,0 +1,14 @@
+.app-view-statistics-announcements-summary__sidebar-actions {
+  padding: govuk-spacing(3);
+  margin-bottom: govuk-spacing(6);
+  background-color: govuk-colour("light-grey");
+}
+
+.app-view-statistics-announcements-summary__sidebar-actions .gem-c-button {
+  width: 100%;
+  display: block;
+}
+
+.app-view-statistics-annoucements-history-entry__list-item-datetime {
+  color: $govuk-secondary-text-colour;
+}
