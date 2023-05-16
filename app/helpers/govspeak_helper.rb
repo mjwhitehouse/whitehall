@@ -251,13 +251,27 @@ private
   end
 
   def govspeak_with_attachments_and_alt_format_information(govspeak, attachments = [], alternative_format_contact_email = nil)
+    hosts = [Whitehall.admin_host, Whitehall.public_host]
+    attachments = attachments.to_a.map do |a|
+      if a.pdf?
+        {
+          id: a.filename,
+          title: a.title,
+          url: a.url,
+          filename: a.filename,
+          file_size: a.file_size,
+          thumbnail_url: a.file.thumbnail.url,
+        }
+      end
+    end
     govspeak = govspeak.gsub(/\n{0,2}^!@([0-9]+)\s*/) do
       if (attachment = attachments[Regexp.last_match(1).to_i - 1])
-        "\n\n#{render(partial: 'documents/attachment', formats: :html, object: attachment, locals: { alternative_format_contact_email: })}\n\n"
+        "\n\n[Attachment:#{attachment[:filename]}]\n\n"
       else
         "\n\n"
       end
     end
+
     govspeak.gsub(/\[InlineAttachment:([0-9]+)\]/) do
       if (attachment = attachments[Regexp.last_match(1).to_i - 1])
         render(partial: "documents/inline_attachment", formats: :html, locals: { attachment: }).chomp
@@ -265,6 +279,9 @@ private
         ""
       end
     end
+
+    govspeak = Govspeak::Document.new(govspeak, { document_domains: hosts, attachments: })
+    govspeak.to_html.html_safe
   end
 
   def edition_body_with_attachments_and_alt_format_information(edition)
