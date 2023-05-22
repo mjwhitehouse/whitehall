@@ -70,7 +70,7 @@ private
 
   def offsite_links_path
     if @parent.is_a? TopicalEvent
-      polymorphic_path([:admin, @parent, :topical_event_featurings])
+      polymorphic_path([:admin, @parent, :topical_event_featurings]) + (preview_design_system?(next_release: false) ? "#non_govuk_government_links_tab" : "")
     else
       polymorphic_path([:features, :admin, @parent]) + (preview_design_system?(next_release: false) ? "#non_govuk_government_links_tab" : "")
     end
