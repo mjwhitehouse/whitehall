@@ -56,6 +56,10 @@ class Admin::TopicalEventFeaturingsController < Admin::BaseController
     redirect_to polymorphic_path([:admin, @topical_event, :topical_event_featurings]), notice: "Featured items re-ordered"
   end
 
+  def confirm_destroy
+    @topical_event_featuring = @topical_event.topical_event_featurings.find(params[:id])
+  end
+
   def destroy
     @topical_event_featuring = @topical_event.topical_event_featurings.find(params[:id])
 
@@ -80,7 +84,7 @@ private
 
   def get_layout
     design_system_actions = []
-    design_system_actions += %w[new create index reorder] if preview_design_system?(next_release: false)
+    design_system_actions += %w[new create index reorder confirm_destroy] if preview_design_system?(next_release: false)
 
     if design_system_actions.include?(action_name)
       "design_system"
