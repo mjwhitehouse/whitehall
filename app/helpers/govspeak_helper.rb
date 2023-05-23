@@ -26,9 +26,15 @@ module GovspeakHelper
     model_images = edition.respond_to?(:images) ? edition.images : []
     images = prepare_images model_images
 
+    model_attachments = edition.respond_to?(:attachments) ? edition.attachments : []
+    attachments = prepare_attachments model_attachments
+
     allowed_elements = edition.allows_inline_attachments? ? %w[details] : []
+
+    # convert old !@1 syntax to new [Attachment: example.pdf]
     partially_processed_govspeak = edition_body_with_attachments_and_alt_format_information(edition)
-    bare_govspeak_to_html(partially_processed_govspeak, images, allowed_elements:)
+
+    bare_govspeak_to_html(partially_processed_govspeak, images, attachments, allowed_elements:)
   end
 
   def govspeak_html_attachment_to_html(html_attachment)
@@ -57,8 +63,21 @@ module GovspeakHelper
     end
   end
 
+  def prepare_attachments(attachments)
+    attachments.map do |attachment|
+      {
+        id: attachment.filename,
+        title: attachment.title,
+        url: attachment.url,
+        filename: attachment.filename,
+        file_size: attachment.file_size,
+        thumbnail_url: attachment.file.thumbnail.url,
+      }
+    end
+  end
+
   def bare_govspeak_with_attachments_to_html(body, attachments = [], alternative_format_contact_email = nil)
-    partially_processed_govspeak = govspeak_with_attachments_and_alt_format_information(body, attachments, alternative_format_contact_email)
+    partially_processed_govspeak = convert_attachment_syntax(body, attachments, alternative_format_contact_email)
     bare_govspeak_to_html(partially_processed_govspeak, [], allowed_elements: %w[details])
   end
 
@@ -102,7 +121,7 @@ module GovspeakHelper
     links.select { |link| DataHygiene::GovspeakLinkValidator.is_internal_admin_link?(link) }
   end
 
-  def bare_govspeak_to_html(govspeak, images = [], options = {}, &block)
+  def bare_govspeak_to_html(govspeak, images = [], attachments = [], options = {}, &block)
     # pre-processors
     govspeak = remove_extra_quotes_from_blockquotes(govspeak)
     govspeak = render_embedded_contacts(govspeak, options[:contact_heading_tag])
@@ -110,7 +129,7 @@ module GovspeakHelper
     govspeak = set_classes_for_charts(govspeak)
     govspeak = set_classes_for_sortable_tables(govspeak)
 
-    markup_to_nokogiri_doc(govspeak, images, options[:allowed_elements])
+    markup_to_nokogiri_doc(govspeak, images, attachments, options[:allowed_elements])
       .tap { |nokogiri_doc|
         # post-processors
         replace_internal_admin_links_in(nokogiri_doc, &block)
@@ -243,55 +262,38 @@ private
     nokogiri_el.inner_text[/^\d+.?[^\s]*/]
   end
 
-  def markup_to_nokogiri_doc(govspeak, images = [], allowed_elements = [])
-    govspeak = build_govspeak_document(govspeak, images, allowed_elements)
+  def markup_to_nokogiri_doc(govspeak, images = [], attachments = [], allowed_elements = [])
+    govspeak = build_govspeak_document(govspeak, images, attachments, allowed_elements)
     doc = Nokogiri::HTML::Document.new
     doc.encoding = "UTF-8"
     doc.fragment(govspeak.to_html)
   end
 
-  def govspeak_with_attachments_and_alt_format_information(govspeak, attachments = [], alternative_format_contact_email = nil)
-    hosts = [Whitehall.admin_host, Whitehall.public_host]
-    attachments = attachments.to_a.map do |a|
-      if a.pdf?
-        {
-          id: a.filename,
-          title: a.title,
-          url: a.url,
-          filename: a.filename,
-          file_size: a.file_size,
-          thumbnail_url: a.file.thumbnail.url,
-        }
-      end
-    end
+  def convert_attachment_syntax(govspeak, attachments = [], alternative_format_contact_email = nil)
     govspeak = govspeak.gsub(/\n{0,2}^!@([0-9]+)\s*/) do
       if (attachment = attachments[Regexp.last_match(1).to_i - 1])
-        "\n\n[Attachment:#{attachment[:filename]}]\n\n"
+        "\n\n[Attachment: #{attachment.filename}]\n\n"
       else
         "\n\n"
       end
     end
-
     govspeak.gsub(/\[InlineAttachment:([0-9]+)\]/) do
       if (attachment = attachments[Regexp.last_match(1).to_i - 1])
-        render(partial: "documents/inline_attachment", formats: :html, locals: { attachment: }).chomp
+        "\n\n[AttachmentLink: #{attachment.filename}]\n\n"
       else
         ""
       end
     end
-
-    govspeak = Govspeak::Document.new(govspeak, { document_domains: hosts, attachments: })
-    govspeak.to_html.html_safe
   end
 
   def edition_body_with_attachments_and_alt_format_information(edition)
     attachments = edition.allows_attachments? ? edition.attachments : []
-    govspeak_with_attachments_and_alt_format_information(edition.body, attachments, edition.alternative_format_contact_email)
+    convert_attachment_syntax(edition.body, attachments, edition.alternative_format_contact_email)
   end
 
-  def build_govspeak_document(govspeak, images = [], allowed_elements = [])
+  def build_govspeak_document(govspeak, images = [], attachments = [], allowed_elements = [])
     hosts = [Whitehall.admin_host, Whitehall.public_host]
-    Govspeak::Document.new(govspeak, { document_domains: hosts, allowed_elements: }).tap do |document|
+    Govspeak::Document.new(govspeak, { document_domains: hosts, allowed_elements:, attachments: }).tap do |document|
       document.images = images
     end
   end
