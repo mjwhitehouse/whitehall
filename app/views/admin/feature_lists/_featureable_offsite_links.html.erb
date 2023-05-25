@@ -3,9 +3,11 @@
   margin_bottom: 6,
 } %>
 
-<p class="govuk-body">
-  <%= link_to "Create a new link", [:new, :admin, model, :offsite_link], class: "govuk-link" %>
-</p>
+<%= render "govuk_publishing_components/components/button", {
+  text: "Create new link",
+  href: [:new, :admin, model, :offsite_link],
+  margin_bottom: featurable_offsite_links.any? ? 4 : 0
+} %>
 
 <% if featurable_offsite_links.any? %>
   <p class="govuk-heading-s govuk-!-margin-bottom-3">
@@ -45,5 +47,7 @@
     } %>
   </div>
 <% else %>
-  <p class="govuk-body">There are currently no non-GOV.UK government links.</p>
+  <%= render "govuk_publishing_components/components/inset_text", {
+    text: "There are currently no non-GOV.UK government links."
+  } %>
 <% end %>
