@@ -15,6 +15,11 @@ class PublishingApi::WorldwideOrganisationPresenterTest < ActiveSupport::TestCas
                            name: "Locationia Embassy",
                            analytics_identifier: "WO123")
 
+    role = create(:ambassador_role)
+    ambassador = create(:person)
+    create(:ambassador_role_appointment, role:, person: ambassador)
+    FactoryBot.create(:worldwide_organisation_role, worldwide_organisation: worldwide_org, role:)
+
     public_path = worldwide_org.public_path
 
     expected_hash = {
@@ -81,6 +86,12 @@ class PublishingApi::WorldwideOrganisationPresenterTest < ActiveSupport::TestCas
       ordered_contacts: [
         worldwide_org.reload.offices.first.contact.content_id,
       ],
+      ordered_primary_role_people: [
+        worldwide_org.reload.primary_role.current_person.content_id,
+      ],
+      ordered_non_primary_role_people: (
+        [worldwide_org.reload.secondary_role&.current_person] + worldwide_org.reload.office_staff_roles.map(&:current_person)
+      ).compact.map(&:content_id),
       sponsoring_organisations: [
         worldwide_org.sponsoring_organisations.first.content_id,
       ],
