@@ -9,9 +9,9 @@ ActiveSupport::Inflector.inflections(:en) do |inflect|
   #   inflect.irregular 'person', 'people'
   #   inflect.uncountable %w( fish sheep )
   inflect.acronym "FOI"
-
   inflect.plural %r{^(Minister)}, '\0s'
   inflect.plural %r{^Chancellor}, '\0s'
+  inflect.plural "call_for_evidence", "calls_for_evidence"
 end
 
 # These inflection rules are supported but not enabled by default:
